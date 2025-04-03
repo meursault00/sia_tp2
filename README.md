@@ -35,3 +35,32 @@ para instalar las dependencias necesarias en el ambiente virtual
 pipenv run python main.py [config_path] [image_path]
 ```
 
+## Ejecución con Jupyter Notebook
+
+Para ver los generaciones intermedias se puede usar Jupyter Notebook.
+
+### Instalación
+
+```
+pipenv install jupyter
+```
+
+### Ejecución
+
+Para abrir Jupyter Notebook –desde el virtual environment que se este usando- usar el siguiente comando:
+
+```
+jupyter notebook
+```
+
+Entonces se abrirá Jupyter Notebook en el navegador, abrir el archivo main.ipynb. 
+
+Cuando se solicite elegir el kernel de Python 3 por default. 
+
+De ser necesario modificar la segunda cell siguiendo el esquema abajo:
+
+```
+%run python main.py [config_path] [image_path]
+```
+
+Apretar el botón de :fast_forward: en la barra superior a la izquierda.

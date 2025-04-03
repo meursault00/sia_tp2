@@ -6,6 +6,10 @@ name = "pypi"
 [packages]
 numpy = "*"
 pillow = "*"
+jupyter = "*"
+matplotlib = "*"
+ipython = "*"
+ipywidgets = "*"
 
 [dev-packages]
 
