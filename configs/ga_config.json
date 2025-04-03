@@ -1,0 +1,7 @@
+{
+    "population_size": 20,
+    "n_generations": 50,
+    "mutation_rate": 0.05,
+    "crossover_rate": 0.8,
+    "n_triangles": 5
+  }
