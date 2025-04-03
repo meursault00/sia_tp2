@@ -1,0 +1,13 @@
+{
+    "population_size": 20,
+    "n_generations": 10,
+    "mutation_rate": 0.05,
+    "crossover_rate": 0.8,
+    "n_triangles": 5,
+  
+    "selection_method": "tournament",
+    "crossover_method": "one_point",
+    "mutation_method": "basic",
+  
+    "output_image_name": "result_tournament_onepoint_basic.png"
+  }

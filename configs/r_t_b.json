@@ -1,0 +1,13 @@
+{
+    "population_size": 15,
+    "n_generations": 8,
+    "mutation_rate": 0.06,
+    "crossover_rate": 0.7,
+    "n_triangles": 4,
+  
+    "selection_method": "roulette",
+    "crossover_method": "two_point",
+    "mutation_method": "basic",
+  
+    "output_image_name": "result_roulette_twopoint_basic.png"
+  }

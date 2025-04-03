@@ -32,6 +32,6 @@ para instalar las dependencias necesarias en el ambiente virtual
 ## Ejecución
 
 ```
-pipenv run python main.py
+pipenv run python main.py [config_path] [image_path]
 ```
 

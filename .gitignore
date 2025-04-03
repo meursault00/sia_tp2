@@ -43,6 +43,7 @@ env/
 *.bak
 *.tmp
 *.orig
+*.png
 
 # VS Code settings / PyCharm settings (optional, if using either)
 .vscode/

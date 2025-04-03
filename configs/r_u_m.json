@@ -1,0 +1,13 @@
+{
+    "population_size": 25,
+    "n_generations": 12,
+    "mutation_rate": 0.03,
+    "crossover_rate": 0.8,
+    "n_triangles": 6,
+  
+    "selection_method": "ranking",
+    "crossover_method": "uniform",
+    "mutation_method": "multi_gen",
+  
+    "output_image_name": "result_ranking_uniform_multigen.png"
+  }
