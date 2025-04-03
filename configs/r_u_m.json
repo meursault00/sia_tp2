@@ -1,9 +1,9 @@
 {
     "population_size": 25,
-    "n_generations": 12,
-    "mutation_rate": 0.03,
+    "n_generations": 100,
+    "mutation_rate": 0.1,
     "crossover_rate": 0.8,
-    "n_triangles": 6,
+    "n_triangles": 100,
   
     "selection_method": "ranking",
     "crossover_method": "uniform",
