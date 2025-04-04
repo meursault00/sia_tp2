@@ -1,5 +1,6 @@
 {
     "population_size": 25,
+    "parents_size": 14,
     "n_generations": 100,
     "mutation_rate": 0.1,
     "crossover_rate": 0.8,
@@ -8,6 +9,7 @@
     "selection_method": "ranking",
     "crossover_method": "uniform",
     "mutation_method": "multi_gen",
+    "separation_method": "traditional",
   
     "output_image_name": "result_ranking_uniform_multigen.png"
   }

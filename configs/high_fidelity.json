@@ -1,5 +1,6 @@
 {
     "population_size": 200,
+    "parents_size": 200,
     "n_generations": 1000,
     "mutation_rate": 0.03,
     "crossover_rate": 0.8,
@@ -8,6 +9,7 @@
     "selection_method": "ranking",
     "crossover_method": "two_point",
     "mutation_method": "multi_gen",
+    "separation_method": "traditional",
   
     "output_image_name": "result_high_fidelity.png"
   }

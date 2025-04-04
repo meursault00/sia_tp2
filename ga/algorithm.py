@@ -17,6 +17,9 @@ def run_ga(config, target_image):
     in a Jupyter notebook after each generation.
     """
     w, h = target_image.width, target_image.height
+    N = config["population_size"]
+    K = config["parents_size"]
+    separation = config["separation_method"]
 
     # Retrieve functions from config
     selection_func = selection_strategies[config["selection_method"]]
@@ -32,10 +35,10 @@ def run_ga(config, target_image):
     n_gens = config["n_generations"]
     for gen in range(n_gens):
         # Selection
-        parents = selection_func(population.individuals)
+        parents = selection_func(population.individuals, K)
 
         # Crossover
-        new_generation = []
+        offspring = []
         for i in range(0, len(parents), 2):
             if i+1 < len(parents):
                 p1, p2 = parents[i], parents[i+1]
@@ -43,17 +46,39 @@ def run_ga(config, target_image):
                     c1, c2 = crossover_func(p1, p2)
                 else:
                     c1, c2 = p1.clone(), p2.clone()
-                new_generation.append(c1)
-                new_generation.append(c2)
+                offspring.append(c1)
+                offspring.append(c2)
             else:
-                new_generation.append(parents[i].clone())
+                offspring.append(parents[i].clone()) # In case there's an odd number of parents
 
         # Mutation
-        for ind in new_generation:
-            mutation_func(ind, config["mutation_rate"], w, h)
+        for child in offspring:
+            mutation_func(child, config["mutation_rate"], w, h)
 
-        # Replacing the entire population
-        population.individuals = new_generation
+        # #Evaluate offspring
+        for child in offspring:
+            child.fitness = compute_fitness(child, target_image)
+
+        # Separation methods
+        if separation == "traditional":
+            # Combine entire old population + new children and select N
+            combined = population.individuals + offspring
+            combined.sort(key=lambda ind: ind.fitness, reverse=True) # Elitist selection of N children
+            population.individuals = combined[:N]
+        elif separation == "young_bias":
+            # Use children, and if not enough grab from the best of the old population
+            if len(offspring) >= N:
+                offspring.sort(key=lambda ind: ind.fitness, reverse=True) # Elitist selection of N children
+                population.individuals = offspring[:N]
+            else:
+                # Not enough children, fill with the best from the old population
+                remaining = N - len(offspring)
+                old_sorted = sorted(population.individuals, key=lambda ind: ind.fitness, reverse=True)
+                population.individuals = offspring + old_sorted[:remaining]
+        else:
+            raise ValueError(f"Unknown separation method: {separation}")
+
+        # Fitness evaluation of new generation
         population.evaluate(compute_fitness, target_image)
 
         current_best = population.get_best()

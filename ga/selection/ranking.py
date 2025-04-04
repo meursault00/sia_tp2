@@ -1,6 +1,6 @@
 import random
 
-def ranking_selection(population):
+def ranking_selection(population, k):
     """
     Ranking-based selection. Simplificada: se ordena por fitness
     y se asocia una pseudo-aptitud. Luego, se hace ruleta con esa pseudo-aptitud.
@@ -15,7 +15,7 @@ def ranking_selection(population):
     total_pf = sum(pseudo_fitness_list)
     
     chosen = []
-    for _ in range(n):
+    for _ in range(k):
         pick = random.uniform(0, total_pf)
         current = 0
         for idx, ind in enumerate(sorted_pop):

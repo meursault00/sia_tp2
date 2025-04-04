@@ -33,6 +33,7 @@ venv/
 .venv/
 env/
 .env/
+my_venv/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
