@@ -1,0 +1,15 @@
+{
+    "population_size": 100,
+    "parents_size": 100,
+    "n_generations": 1000,
+    "mutation_rate": 0.05,
+    "crossover_rate": 0.8,
+    "n_triangles": 50,
+  
+    "selection_method": "boltzmann",
+    "crossover_method": "one_point",
+    "mutation_method": "basic",
+    "separation_method": "traditional",
+  
+    "output_image_name": "result_boltzmann_onepoint_basic.png"
+  }
