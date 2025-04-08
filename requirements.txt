@@ -3,3 +3,5 @@ Pillow
 matplotlib
 ipython
 ipywidgets
+scikit-image
+scipy
