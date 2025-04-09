@@ -1,28 +1,32 @@
-# utils/render.py
 from PIL import Image, ImageDraw
 
 def render_individual(individual, width, height):
     """
-    Dibuja los triángulos del individuo en un canvas blanco (RGBA).
-    Retorna un objeto PIL.Image.
+    Renders an individual's triangles onto a white canvas (RGBA),
+    ensuring proper alpha blending even in overlapping regions.
+    Returns a PIL.Image.
     """
-    # 1) Crear un canvas en blanco
-    # "RGBA" => (0,0,0,0) para el fondo => hacemos fill blanco manual
-    img = Image.new("RGBA", (width, height), (255, 255, 255, 255))
-    draw = ImageDraw.Draw(img, "RGBA")
+    # Create a base image that is white and fully opaque.
+    base_img = Image.new("RGBA", (width, height), (255, 255, 255, 255))
     
-    # 2) Recorrer todos los triángulos del individuo
+    # Create an overlay that will accumulate triangles.
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    
     for triangle in individual.genes:
-        # triangle = (x1, y1, x2, y2, x3, y3, R, G, B, A)
+        # Unpack gene: (x1, y1, x2, y2, x3, y3, R, G, B, A)
         x1, y1, x2, y2, x3, y3, r, g, b, a = triangle
-        
-        # Pillow admite un fill con (R, G, B, A) si "RGBA"
-        # A va de 0..255 si es un canal de 8 bits, pero aquí a ∈ [0..1].
-        # => Convertir a ∈ [0..255] si se desea
         alpha_255 = int(a * 255)
+        polygon_coords = [(x1, y1), (x2, y2), (x3, y3)]
         
-        polygon_coords = [(x1,y1), (x2,y2), (x3,y3)]
-        draw.polygon(polygon_coords, fill=(r, g, b, alpha_255))
+        # Create a temporary image for this triangle (transparent background)
+        tri_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        tri_draw = ImageDraw.Draw(tri_img, "RGBA")
+        tri_draw.polygon(polygon_coords, fill=(r, g, b, alpha_255))
+        
+        # Alpha composite the triangle image onto the overlay.
+        overlay = Image.alpha_composite(overlay, tri_img)
+    
+    # Finally, composite the overlay onto the white base image.
+    result_img = Image.alpha_composite(base_img, overlay)
+    return result_img
 
-    # 3) Devolver la imagen resultante
-    return img
