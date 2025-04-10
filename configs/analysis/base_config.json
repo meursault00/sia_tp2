@@ -1,0 +1,15 @@
+{
+    "population_size": 50,
+    "n_generations": 1000,
+    "parents_size": 50,
+    "tournament_size": 20,
+    "elite_size": 5,
+    "separation_method": "traditional",
+    "selection_method": "tournament",
+    "crossover_method": "one_point",
+    "mutation_method": "multi_gen",
+    "mutation_rate": 0.15,
+    "crossover_rate": 0.9,
+    "n_triangles": 100,
+    "output_image_name": "result_high_fidelity.png"
+}

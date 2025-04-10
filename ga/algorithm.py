@@ -3,6 +3,7 @@
 import random
 from IPython.display import clear_output
 import matplotlib.pyplot as plt
+import numpy as np
 
 from .population import Population
 from .fitness import compute_fitness
@@ -16,6 +17,7 @@ def run_ga(config, target_image):
     A variation of run_ga that displays intermediate images
     in a Jupyter notebook after each generation.
     """
+    target_array = np.array(target_image.convert("RGBA"), dtype=np.float32)
     w, h = target_image.width, target_image.height
     N = config["population_size"]
     K = config["parents_size"]
@@ -28,7 +30,7 @@ def run_ga(config, target_image):
 
     # Create initial population
     population = Population(config, w, h)
-    population.evaluate(compute_fitness, target_image)
+    population.evaluate(lambda ind, _: compute_fitness(ind, target_array, w, h), target_image)
 
     best = population.get_best()
 
@@ -57,7 +59,7 @@ def run_ga(config, target_image):
 
         # #Evaluate offspring
         for child in offspring:
-            child.fitness = compute_fitness(child, target_image)
+            child.fitness = compute_fitness(child, target_array, w, h)
 
         # Separation methods
         if separation == "traditional":
@@ -79,7 +81,7 @@ def run_ga(config, target_image):
             raise ValueError(f"Unknown separation method: {separation}")
 
         # Fitness evaluation of new generation
-        population.evaluate(compute_fitness, target_image)
+        population.evaluate(lambda ind, _: compute_fitness(ind, target_array, w, h), target_image)
 
         current_best = population.get_best()
         if current_best.fitness > best.fitness:

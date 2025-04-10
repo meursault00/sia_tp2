@@ -1,114 +1,55 @@
 import numpy as np
 from utils.render import render_individual
-from skimage import color
 from skimage.metrics import structural_similarity
-from scipy import ndimage
+from PIL import Image
 
-def compute_fitness(individual, target_image):
+def compute_fitness(individual, target_array, w, h):
     """
-    Computes fitness using multiple perceptual metrics:
-    - LAB color space comparison
-    - Structural similarity (SSIM)
-    - Edge detection comparison
-    - Triangle count penalty
+    Computes fitness by combining Mean Squared Error (MSE) and Structural Similarity (SSIM)
+    on downsampled images, with a penalty for triangle complexity, to optimize for perceptual
+    quality and efficiency.
+    
+    Parameters:
+      individual: Candidate solution with 'genes' (list of triangles).
+      target_array: Precomputed NumPy array of target image (RGBA, float32).
+      w, h: Original dimensions of the image.
+    
+    Returns:
+      float: Fitness value in [0, 1], higher is better.
     """
-    # 1. Compute the dynamic bounding box from triangles
-    all_x = []
-    all_y = []
-    for tri in individual.genes:
-        x1, y1, x2, y2, x3, y3 = tri[0], tri[1], tri[2], tri[3], tri[4], tri[5]
-        all_x.extend([x1, x2, x3])
-        all_y.extend([y1, y2, y3])
-    min_x = int(min(all_x))
-    max_x = int(max(all_x))
-    min_y = int(min(all_y))
-    max_y = int(max(all_y))
+    # Downsample to max 200x200 for speed
+    max_dim = 200
+    scale = min(max_dim / w, max_dim / h) if w > max_dim or h > max_dim else 1
+    new_w, new_h = max(7, int(w * scale)), max(7, int(h * scale))  # Ensure min 7x7 for SSIM
     
-    # Determine patch dimensions
-    patch_width = max_x - min_x
-    patch_height = max_y - min_y
+    # Render and convert generated image
+    generated_img = render_individual(individual, new_w, new_h)
+    arr_generated = np.array(generated_img.convert("RGBA"), dtype=np.float32)
     
-    # Make sure the patch has a positive area
-    if patch_width <= 0 or patch_height <= 0:
-        return 0.0
+    # Resize target array to match
+    target_pil = Image.fromarray(target_array.astype(np.uint8), mode="RGBA")
+    target_resized = target_pil.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    arr_target = np.array(target_resized, dtype=np.float32)
     
-    # 2. Crop the target image to the bounding box
-    patch_box = (min_x, min_y, max_x, max_y)
-    target_patch = target_image.crop(patch_box)
+    # Component 1: Mean Squared Error (normalized)
+    mse = np.mean((arr_target - arr_generated) ** 2)
+    mse_max = 255 ** 2 * 4  # Max MSE for RGBA (255^2 per channel)
+    mse_score = 1 - (mse / mse_max)  # [0, 1], 1 is perfect
     
-    # 3. Render the individual
-    generated_patch = render_individual(individual, patch_width, patch_height)
+    # Component 2: Structural Similarity (SSIM)
+    win_size = 7  # Set explicitly to 7; 7 is odd and 7 <= new_w, new_h (which are at least 7)
+    ssim_score = structural_similarity(arr_target, arr_generated, channel_axis=-1, 
+                                       data_range=255, win_size=win_size)
     
-    # 4. Convert images to arrays and normalize
-    arr_target = np.array(target_patch, dtype=np.float32) / 255.0
-    arr_generated = np.array(generated_patch, dtype=np.float32) / 255.0
+    # Component 3: Complexity Penalty
+    visible_triangles = sum(1 for tri in individual.genes 
+                           if abs((tri[0]*(tri[3]-tri[5]) + tri[2]*(tri[5]-tri[1]) + 
+                                   tri[4]*(tri[1]-tri[3])) / 2) > 1)  # Count visible (area > 1)
+    complexity_penalty = 0.001 * (len(individual.genes) - visible_triangles)  # Penalize degenerate
+    complexity_factor = max(0.9, 1 - complexity_penalty)  # Cap at 0.9 to avoid over-penalizing
     
-    # COMPONENT 1: LAB COLOR SPACE COMPARISON
-    lab_score = 0
-    if arr_target.shape[-1] >= 3:
-        # Extract RGB channels
-        target_rgb = arr_target[:, :, :3]
-        generated_rgb = arr_generated[:, :, :3]
-        
-        # Convert to LAB color space
-        target_lab = color.rgb2lab(target_rgb)
-        generated_lab = color.rgb2lab(generated_rgb)
-        
-        # Calculate MSE in LAB space
-        diff_lab = target_lab - generated_lab
-        lab_mse = np.mean(diff_lab ** 2)
-        lab_score = 1.0 / (1.0 + lab_mse)
-    else:
-        # Fallback to regular MSE for non-RGB images
-        diff = arr_target - arr_generated
-        mse = np.mean(diff ** 2)
-        lab_score = 1.0 / (1.0 + mse)
-        
-    # COMPONENT 2: STRUCTURAL SIMILARITY
-    ssim_score = 0
-    if arr_target.shape[-1] >= 3:
-        # Calculate SSIM for each RGB channel and average
-        for i in range(3):
-            ssim_score += structural_similarity(
-                arr_target[:,:,i], 
-                arr_generated[:,:,i], 
-                data_range=1.0  # We normalized to [0,1]
-            )
-        ssim_score /= 3
-    else:
-        ssim_score = structural_similarity(
-            arr_target.squeeze(), 
-            arr_generated.squeeze(),
-            data_range=1.0
-        )
+    # Combine: 40% MSE, 40% SSIM, 20% complexity-adjusted
+    fitness = (0.4 * mse_score + 0.4 * ssim_score) * complexity_factor
     
-    # COMPONENT 3: EDGE DETECTION COMPARISON
-    edge_score = 0
-    if arr_target.shape[-1] >= 3:
-        # Convert to grayscale for edge detection
-        target_gray = np.mean(arr_target[:,:,:3], axis=2)
-        generated_gray = np.mean(arr_generated[:,:,:3], axis=2)
-        
-        # Apply Sobel filter to detect edges
-        target_edges = ndimage.sobel(target_gray)
-        generated_edges = ndimage.sobel(generated_gray)
-        
-        # Compare edge maps
-        edge_diff = target_edges - generated_edges
-        edge_mse = np.mean(edge_diff ** 2)
-        edge_score = 1.0 / (1.0 + edge_mse)
-    
-    # COMPONENT 4: COMPLEXITY PENALTY
-    # Encourage using fewer triangles
-    triangle_count = len(individual.genes)
-    complexity_penalty = 0.002 * triangle_count
-    complexity_factor = max(0.5, 1.0 - complexity_penalty)  # Limit penalty
-    
-    # COMBINE ALL COMPONENTS
-    # Weighted combination of all metrics
-    visual_score = (0.4 * lab_score) + (0.4 * ssim_score) + (0.2 * edge_score)
-    
-    # Apply complexity penalty
-    final_fitness = visual_score * complexity_factor
-    
-    return max(0.001, final_fitness)  # Ensure positive fitness
+    print(f"MSE: {mse:.2f}, SSIM: {ssim_score:.4f}, Visible: {visible_triangles}/{len(individual.genes)}, Fitness: {fitness:.6f}", flush=True)
+    return max(0.001, fitness)  # Ensure non-zero fitness
