@@ -59,7 +59,7 @@ def run_ga(config, target_image):
 
         # #Evaluate offspring
         for child in offspring:
-            child.fitness = compute_fitness(child, target_array, w, h)
+            child.fitness = compute_fitness(child, target_array, w, h, gen, n_gens)
 
         # Separation methods
         if separation == "traditional":
