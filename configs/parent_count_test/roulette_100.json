@@ -1,0 +1,15 @@
+{
+    "population_size": 200,         
+    "parents_size": 100,            
+    "n_generations": 150,          
+    "mutation_rate": 0.03,
+    "crossover_rate": 0.8,
+    "n_triangles": 50,              
+  
+    "selection_method": "roulette",  
+    "crossover_method": "two_point",
+    "mutation_method": "multi_gen",
+    "separation_method": "traditional",
+  
+    "output_image_name": "result_test.png"
+  }
