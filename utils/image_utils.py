@@ -1,10 +1,8 @@
-# utils/image_utils.py
+from PIL import Image
 
-from PIL import Image  # Ejemplo: usar Pillow
-
-def load_image(path):
-    """
-    Carga la imagen con Pillow o similar y retorna un objeto con .width y .height
-    """
-    img = Image.open(path).convert("RGBA")
+def load_image(path, max_size=(254, 254)):
+    img = Image.open(path)
+    img = img.convert("RGBA")
+    # Use LANCZOS for high-quality downsampling.
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)
     return img
