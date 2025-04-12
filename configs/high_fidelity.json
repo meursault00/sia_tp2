@@ -1,15 +1,15 @@
 {
-    "population_size": 200,
-    "parents_size": 200,
-    "n_generations": 1000,
-    "mutation_rate": 0.03,
-    "crossover_rate": 0.8,
-    "n_triangles": 50,
-  
-    "selection_method": "ranking",
-    "crossover_method": "two_point",
-    "mutation_method": "multi_gen",
+    "n_triangles_global": 1000,
+    "tri_per_patch_desired": 40,
+    "population_size": 100,
+    "n_generations": 500,
+    "parents_size": 60,
+    "crossover_rate": 0.9,
+    "mutation_rate": 0.05,
+    "selection_method": "tournament",
+    "crossover_method": "one_point",
+    "mutation_method": "basic",
     "separation_method": "traditional",
-  
-    "output_image_name": "result_high_fidelity.png"
+    "overlap_frac": 0.3,
+    "output_image_name": "high_fidelity_composite.png"
   }

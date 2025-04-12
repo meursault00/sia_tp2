@@ -1,13 +1,11 @@
-# ga/population.py
-
 import random
 from .individual import Individual
 
 class Population:
     def __init__(self, config, image_width, image_height):
         """
-        Crea una población inicial aleatoria.
-        config es un dict con 'population_size' y 'n_triangles'
+        Creates an initial population based on the provided configuration.
+        Here, config["n_triangles"] is expected to be the number of triangles per patch.
         """
         self.individuals = []
         for _ in range(config["population_size"]):
@@ -19,4 +17,4 @@ class Population:
             ind.fitness = fitness_func(ind, target_image)
     
     def get_best(self):
-        return max(self.individuals, key=lambda x: x.fitness)
+        return max(self.individuals, key=lambda ind: ind.fitness)

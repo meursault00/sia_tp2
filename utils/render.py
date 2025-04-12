@@ -29,4 +29,3 @@ def render_individual(individual, width, height):
     # Finally, composite the overlay onto the white base image.
     result_img = Image.alpha_composite(base_img, overlay)
     return result_img
-
