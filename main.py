@@ -6,6 +6,7 @@ from PIL import Image
 from utils.image_utils import load_image
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from collections import defaultdict
 
 def run_patch_ga(patch_box, nominal_rect, local_config, patch):
     """
@@ -15,8 +16,8 @@ def run_patch_ga(patch_box, nominal_rect, local_config, patch):
     """
     local_config["disable_display"] = True  # disable display for parallel workers
     from ga.algorithm import run_ga  # import locally for pickling compatibility
-    best_individual = run_ga(local_config, patch)
-    return patch_box, nominal_rect, best_individual
+    snapshots = run_ga(local_config, patch)
+    return patch_box, nominal_rect, snapshots
 
 def create_blend_mask(patch_w, patch_h, left_margin, right_margin, top_margin, bottom_margin):
     """
@@ -115,67 +116,58 @@ def main():
         futures = [executor.submit(run_patch_ga, tb, nr, conf, p) for tb, nr, conf, p in tasks]
         for fut in as_completed(futures):
             try:
-                result = fut.result()  # result = (patch_box, nominal_rect, best_individual)
+                result = fut.result()  # result = (patch_box, nominal_rect, snapshots)
                 results.append(result)
             except Exception as e:
                 print("Error processing a patch:", e)
     
-    # Composite the final image using weighted blending.
-    composite_array = np.zeros((full_h, full_w, 4), dtype=np.float32)
-    weight_array = np.zeros((full_h, full_w), dtype=np.float32)
-    
-    # For each patch result:
-    from utils.render import render_individual
-    for patch_box, nominal_rect, best_individual in results:
-        # Render the best individual's patch over the entire overlapping region.
-        left, upper, right, lower = patch_box
-        patch_w_run = right - left
-        patch_h_run = lower - upper
-        patch_result_img = render_individual(best_individual, patch_w_run, patch_h_run)
-        patch_result_arr = np.array(patch_result_img, dtype=np.float32) / 255.0
+    # Composite the snapshots into full images using weighted blending
+    num_snapshots = global_config.get("intermediate_images", 0)
+    if num_snapshots > 0:
+        snapshot_composites = [np.zeros((full_h, full_w, 4), dtype=np.float32) for _ in range(num_snapshots)]
+        snapshot_weights   = [np.zeros((full_h, full_w), dtype=np.float32) for _ in range(num_snapshots)]
 
-        # Create a blending weight mask for this patch.
-        # Compute margins for the patch relative to its nominal region.
-        nom_left, nom_upper, nom_right, nom_lower = nominal_rect
-        left_margin = nom_left - left
-        right_margin = right - nom_right
-        top_margin = nom_upper - upper
-        bottom_margin = lower - nom_lower
-        # Ensure margins are at least 1 to avoid division by zero.
-        left_margin = max(1, left_margin)
-        right_margin = max(1, right_margin)
-        top_margin = max(1, top_margin)
-        bottom_margin = max(1, bottom_margin)
-        
-        mask = create_blend_mask(patch_w_run, patch_h_run, left_margin, right_margin, top_margin, bottom_margin)
-        
-        # Determine where in the composite image this patch goes.
-        # We use the full patch_box region.
-        comp_region = (left, upper, right, lower)
-        comp_arr = np.array(composite_array, copy=False)
-        weight_region = weight_array  # We'll update weight_array accordingly.
-        
-        # Add weighted contribution.
-        # Determine composite array slice:
-        comp_slice = (slice(upper, lower), slice(left, right), slice(None))
-        composite_array[comp_slice] += patch_result_arr * mask
-        # Also add mask weights to weight array (only one channel needed).
-        weight_array[upper:lower, left:right] += mask[:, :, 0]
-    
-    # Normalize composite image by total weight, taking care of zeros.
-    weight_array[weight_array == 0] = 1.0
-    normalized = composite_array / weight_array[:, :, np.newaxis]
-    normalized = (np.clip(normalized, 0, 1) * 255).astype(np.uint8)
-    final_composite = Image.fromarray(normalized, mode="RGBA")
+        # For each patch result:
+        from utils.render import render_individual
+        for patch_box, nominal_rect, snapshots in results:
+            left, upper, right, lower = patch_box
+            patch_w_run = right - left
+            patch_h_run = lower - upper
 
-    # Save final composite image.
-    results_folder = "results"
-    if not os.path.exists(results_folder):
-        os.makedirs(results_folder)
-    output_image_name = global_config.get("output_image_name", "composite_result.png")
-    output_file_path = os.path.join(results_folder, output_image_name)
-    final_composite.save(output_file_path)
-    print(f"Final composite image saved as {output_file_path}")
+            # Compute blending mask once per patch
+            nom_left, nom_upper, nom_right, nom_lower = nominal_rect
+            left_margin   = max(1, nom_left - left)
+            right_margin  = max(1, right - nom_right)
+            top_margin    = max(1, nom_upper - upper)
+            bottom_margin = max(1, lower - nom_lower)
+            mask = create_blend_mask(patch_w_run, patch_h_run, left_margin, right_margin, top_margin, bottom_margin)
+
+            # Add this patch's contribution to each snapshot
+            for i, (_, individual) in enumerate(snapshots):
+                patch_img = render_individual(individual, patch_w_run, patch_h_run)
+                patch_arr = np.array(patch_img, dtype=np.float32) / 255.0
+
+                snapshot_composites[i][upper:lower, left:right] += patch_arr * mask
+                snapshot_weights[i][upper:lower, left:right] += mask[:, :, 0]
+
+        # Normalize and save each snapshot
+        results_folder = "results"
+        os.makedirs(results_folder, exist_ok=True)
+
+        output_name = global_config.get("output_image_name", "composite_result.png")
+        base, ext = os.path.splitext(output_name)
+
+        for i in range(num_snapshots):
+            gen_number, _ = results[0][2][i]  # [0] = first patch, [2] = snapshots, [i] = ith snapshot
+            weight = snapshot_weights[i]
+            weight[weight == 0] = 1.0
+            normalized = snapshot_composites[i] / weight[:, :, np.newaxis]
+            normalized = (np.clip(normalized, 0, 1) * 255).astype(np.uint8)
+            img = Image.fromarray(normalized, mode="RGBA")
+
+            output_path = os.path.join(results_folder, f"{base}_gen{gen_number}{ext}")
+            img.save(output_path)
+            print(f"✅ Saved generation {gen_number} to {output_path}")
 
 def create_blend_mask(patch_w, patch_h, left_margin, right_margin, top_margin, bottom_margin):
     """

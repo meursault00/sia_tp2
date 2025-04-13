@@ -15,6 +15,19 @@ def run_ga(config, target_image):
     K = config.get("parents_size", N)
     separation = config.get("separation_method", "traditional")
 
+    # Generation of intermediate images
+    intermediate_freq = config.get("intermediate_images", 0)
+    capture_generations = []
+    if intermediate_freq > 0:
+        n_intervals = intermediate_freq
+        total_gens = config["n_generations"]
+        interval = max(1, total_gens // (n_intervals - 1))  # generate exactly N snapshots (including 0 and final)
+
+        capture_generations = [i for i in range(0, total_gens, interval)]
+        if total_gens - 1 not in capture_generations:
+            capture_generations.append(total_gens - 1)
+    snapshots = []  # (gen_num, best_individual)
+
     selection_func = selection_strategies[config["selection_method"]]
     crossover_func = crossover_strategies[config["crossover_method"]]
     mutation_func  = mutation_strategies[config["mutation_method"]]
@@ -65,8 +78,14 @@ def run_ga(config, target_image):
         current_best = population.get_best()
         if current_best.fitness > best.fitness:
             best = current_best.clone()
+        
+        if gen in capture_generations:
+            snapshots.append((gen, best.clone()))
 
         # Log progress without rendering
         print(f"Generation {gen+1}/{n_gens}: Best fitness = {best.fitness:.6f}")
 
-    return best
+        # Also append the final one if not already there
+    if n_gens - 1 not in [gen for gen, _ in snapshots]:
+        snapshots.append((n_gens - 1, best.clone()))
+    return snapshots
