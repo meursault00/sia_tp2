@@ -16,7 +16,7 @@ def run_patch_ga(patch_box, nominal_rect, local_config, patch, global_target):
     """
     local_config["disable_display"] = True  # disable display for parallel workers
     from ga.algorithm import run_ga  # import locally for pickling compatibility
-    snapshots = run_ga(local_config, patch)
+    snapshots = run_ga(local_config, patch, global_target)
     print(f"[Worker] Finished GA for patch with overlapping bounds: {patch_box}", flush=True)
     return patch_box, nominal_rect, snapshots
 
