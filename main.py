@@ -16,7 +16,7 @@ def run_patch_ga(patch_box, nominal_rect, local_config, patch, global_target):
     """
     local_config["disable_display"] = True  # disable display for parallel workers
     from ga.algorithm import run_ga  # import locally for pickling compatibility
-    snapshots = run_ga(local_config, patch)
+    snapshots = run_ga(local_config, patch, global_target)
     print(f"[Worker] Finished GA for patch with overlapping bounds: {patch_box}", flush=True)
     return patch_box, nominal_rect, snapshots
 
@@ -78,7 +78,8 @@ def main():
             local_config["n_triangles"] = triangles_per_patch
             tasks.append((patch_box, nominal_rect, local_config, patch, full_target))
 
-    print(f"[Main] Submitting {len(tasks)} patch GA tasks in parallel...")
+    num_tasks = len(tasks)
+    print(f"[Main] Submitting {num_tasks} patch GA tasks in parallel...")
 
     # Run patch GA tasks in parallel.
     num_workers = min(len(tasks), os.cpu_count() or 1)
@@ -86,62 +87,65 @@ def main():
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = [executor.submit(run_patch_ga, tb, nr, conf, p, full_target)
                    for tb, nr, conf, p, _ in tasks]
+        future_counter = 0
         for future in as_completed(futures):
             try:
                 result = future.result()  # result = (patch_box, nominal_rect, snapshots)
                 results.append(result)
-                print(f"[Main] Finished patch with overlapping bounds: {result[0]}", flush=True)
+                print(f"[Main] Finished patch [{future_counter}] of [{num_tasks}] with overlapping bounds: {result[0]}", flush=True)
+                future_counter += 1
             except Exception as e:
                 print("Error processing a patch:", e)
     
-    # Composite the snapshots into full images using weighted blending
-    num_snapshots = global_config.get("intermediate_images", 0)
-    if num_snapshots > 0:
-        snapshot_composites = [np.zeros((full_h, full_w, 4), dtype=np.float32) for _ in range(num_snapshots)]
-        snapshot_weights   = [np.zeros((full_h, full_w), dtype=np.float32) for _ in range(num_snapshots)]
+    # Composite the snapshots into full images using weighted blending (make sure it's at least 1)
+    num_snapshots = global_config.get("intermediate_images", 1)
+    num_snapshots = 1 if num_snapshots <= 0 else num_snapshots
 
-        from utils.blend import create_blend_mask  # assume this function is in utils/blend.py
-        from utils.render import render_individual
-        # For each patch result:
-        for patch_box, nominal_rect, snapshots in results:
-            left, upper, right, lower = patch_box
-            patch_w_run = right - left
-            patch_h_run = lower - upper
+    snapshot_composites = [np.zeros((full_h, full_w, 4), dtype=np.float32) for _ in range(num_snapshots)]
+    snapshot_weights   = [np.zeros((full_h, full_w), dtype=np.float32) for _ in range(num_snapshots)]
 
-            # Compute blending mask once per patch
-            nom_left, nom_upper, nom_right, nom_lower = nominal_rect
-            left_margin   = max(1, nom_left - left)
-            right_margin  = max(1, right - nom_right)
-            top_margin    = max(1, nom_upper - upper)
-            bottom_margin = max(1, lower - nom_lower)
-            mask = create_blend_mask(patch_w_run, patch_h_run, left_margin, right_margin, top_margin, bottom_margin)
+    from utils.blend import create_blend_mask  # assume this function is in utils/blend.py
+    from utils.render import render_individual
+    # For each patch result:
+    for patch_box, nominal_rect, snapshots in results:
+        left, upper, right, lower = patch_box
+        patch_w_run = right - left
+        patch_h_run = lower - upper
 
-            # Add this patch's contribution to each snapshot
-            for i, (_, individual) in enumerate(snapshots):
-                patch_img = render_individual(individual, patch_w_run, patch_h_run)
-                patch_arr = np.array(patch_img, dtype=np.float32) / 255.0
+        # Compute blending mask once per patch
+        nom_left, nom_upper, nom_right, nom_lower = nominal_rect
+        left_margin   = max(1, nom_left - left)
+        right_margin  = max(1, right - nom_right)
+        top_margin    = max(1, nom_upper - upper)
+        bottom_margin = max(1, lower - nom_lower)
+        mask = create_blend_mask(patch_w_run, patch_h_run, left_margin, right_margin, top_margin, bottom_margin)
 
-                snapshot_composites[i][upper:lower, left:right] += patch_arr * mask
-                snapshot_weights[i][upper:lower, left:right] += mask[:, :, 0]
+        # Add this patch's contribution to each snapshot
+        for i, (_, individual) in enumerate(snapshots):
+            patch_img = render_individual(individual, patch_w_run, patch_h_run)
+            patch_arr = np.array(patch_img, dtype=np.float32) / 255.0
 
-        # Normalize and save each snapshot
-        results_folder = "results"
-        os.makedirs(results_folder, exist_ok=True)
+            snapshot_composites[i][upper:lower, left:right] += patch_arr * mask
+            snapshot_weights[i][upper:lower, left:right] += mask[:, :, 0]
 
-        output_name = global_config.get("output_image_name", "composite_result.png")
-        base, ext = os.path.splitext(output_name)
+    # Normalize and save each snapshot
+    results_folder = "results"
+    os.makedirs(results_folder, exist_ok=True)
 
-        for i in range(num_snapshots):
-            gen_number, _ = results[0][2][i]  # [0] = first patch, [2] = snapshots, [i] = ith snapshot
-            weight = snapshot_weights[i]
-            weight[weight == 0] = 1.0
-            normalized = snapshot_composites[i] / weight[:, :, np.newaxis]
-            normalized = (np.clip(normalized, 0, 1) * 255).astype(np.uint8)
-            img = Image.fromarray(normalized, mode="RGBA")
+    output_name = global_config.get("output_image_name", "composite_result.png")
+    base, ext = os.path.splitext(output_name)
 
-            output_path = os.path.join(results_folder, f"{base}_gen{gen_number}{ext}")
-            img.save(output_path)
-            print(f"[Main] Saved generation {gen_number} to {output_path}")
+    for i in range(num_snapshots):
+        gen_number, _ = results[0][2][i]  # [0] = first patch, [2] = snapshots, [i] = ith snapshot
+        weight = snapshot_weights[i]
+        weight[weight == 0] = 1.0
+        normalized = snapshot_composites[i] / weight[:, :, np.newaxis]
+        normalized = (np.clip(normalized, 0, 1) * 255).astype(np.uint8)
+        img = Image.fromarray(normalized, mode="RGBA")
+
+        output_path = os.path.join(results_folder, f"{base}_gen{gen_number}{ext}")
+        img.save(output_path)
+        print(f"[Main] Saved generation {gen_number} to {output_path}")
 
 
 if __name__ == "__main__":

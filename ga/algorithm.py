@@ -25,13 +25,14 @@ def run_ga(config, target_image, global_target=None):
     # Generation of intermediate images
     intermediate_freq = config.get("intermediate_images", 0)
     capture_generations = []
-    if intermediate_freq > 0:
-        n_intervals = intermediate_freq
-        total_gens = config["n_generations"]
-        interval = max(1, total_gens // (n_intervals - 1))  # generate exactly N snapshots (including 0 and final)
-
-        capture_generations = [i for i in range(0, total_gens, interval)]
-        if total_gens - 1 not in capture_generations:
+    total_gens = config["n_generations"]
+    if intermediate_freq <= 1:
+        # Either 0 (no snapshots), or 1 (only capture the final)
+        capture_generations = [total_gens - 1]  
+    else:
+        interval = max(1, total_gens // (intermediate_freq - 1))
+        capture_generations = list(range(0, total_gens, interval))
+        if (total_gens - 1) not in capture_generations:
             capture_generations.append(total_gens - 1)
     snapshots = []  # (gen_num, best_individual)
 
