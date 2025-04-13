@@ -4,6 +4,7 @@ from .fitness import compute_fitness
 from .selection import selection_strategies
 from .crossover import crossover_strategies
 from .mutation import mutation_strategies
+import numpy as np
 
 def run_ga(config, target_image):
     """
@@ -30,15 +31,16 @@ def run_ga(config, target_image):
 
     selection_func = selection_strategies[config["selection_method"]]
     crossover_func = crossover_strategies[config["crossover_method"]]
-    mutation_func  = mutation_strategies[config["mutation_method"]]
+    mutation_func = mutation_strategies[config["mutation_method"]]
 
-    population = Population(config, w, h)
+    # Pass target_image to Population for Individual initialization
+    population = Population(config, w, h, target_image)
     population.evaluate(compute_fitness, target_image)
     best = population.get_best()
 
     n_gens = config["n_generations"]
     for gen in range(n_gens):
-        # Selection of parents.
+        # Selection of parents
         parents = selection_func(population.individuals, K)
         offspring = []
         for i in range(0, len(parents), 2):
