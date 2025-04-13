@@ -30,7 +30,8 @@ def main():
     image_path = sys.argv[2]
     with open(config_path, "r") as f:
         global_config = json.load(f)
-    full_target = load_image(image_path)
+    max_dim = global_config.get("max_dim", 256)
+    full_target = load_image(image_path, max_size=(max_dim, max_dim))
     full_w, full_h = full_target.width, full_target.height
     print(f"[Main] Loaded full target image: {full_w}x{full_h}")
 
