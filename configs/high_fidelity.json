@@ -2,15 +2,19 @@
     "n_triangles_global": 1000,
     "tri_per_patch_desired": 20,
     "population_size": 50,
-    "n_generations": 500,
+    "n_generations": 100,
     "parents_size": 30,
     "crossover_rate": 0.9,
     "mutation_rate": 0.05,
     "intermediate_images": 5,
+    "use_image_sampling": true,
+    "sampling_rate": 0.8,
     "selection_method": "tournament",
     "crossover_method": "one_point",
     "mutation_method": "basic",
     "separation_method": "traditional",
+    "fitness_mode": "interpolation",
     "overlap_frac": 0.2,
-    "output_image_name": "high_fidelity_composite.png"
+    "max_dim": 512,
+    "output_image_name": "512_high_fidelity_composite.png"
   }
