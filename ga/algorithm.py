@@ -1,33 +1,38 @@
 import random
+try:
+    from IPython.display import clear_output
+except ImportError:
+    clear_output = None
+import matplotlib.pyplot as plt
 from .population import Population
 from .fitness import compute_fitness
 from .selection import selection_strategies
 from .crossover import crossover_strategies
 from .mutation import mutation_strategies
-import numpy as np
+from utils.render import render_individual
 
-def run_ga(config, target_image):
+def run_ga(config, target_image, global_target=None):
     """
-    Runs the genetic algorithm on the given patch (target_image) without rendering every generation.
-    Logs progress to the console and returns the best individual.
+    Runs the genetic algorithm on a given target_image patch, using global_target
+    as the source for color sampling. If global_target is None, target_image will be used.
     """
     w, h = target_image.width, target_image.height
     N = config["population_size"]
     K = config.get("parents_size", N)
     separation = config.get("separation_method", "traditional")
+    disable_display = config.get("disable_display", False)
 
     selection_func = selection_strategies[config["selection_method"]]
     crossover_func = crossover_strategies[config["crossover_method"]]
-    mutation_func = mutation_strategies[config["mutation_method"]]
+    mutation_func  = mutation_strategies[config["mutation_method"]]
 
-    # Pass target_image to Population for Individual initialization
-    population = Population(config, w, h, target_image)
+    # Pass the global_target to Population (if global_target is None, population can use target_image)
+    population = Population(config, w, h, global_target)
     population.evaluate(compute_fitness, target_image)
     best = population.get_best()
 
     n_gens = config["n_generations"]
     for gen in range(n_gens):
-        # Selection of parents
         parents = selection_func(population.individuals, K)
         offspring = []
         for i in range(0, len(parents), 2):
@@ -68,7 +73,12 @@ def run_ga(config, target_image):
         if current_best.fitness > best.fitness:
             best = current_best.clone()
 
-        # Log progress without rendering
-        print(f"Generation {gen+1}/{n_gens}: Best fitness = {best.fitness:.6f}")
+        if not disable_display and clear_output is not None:
+            clear_output(wait=True)
+            best_img = render_individual(best, w, h)
+            plt.imshow(best_img)
+            plt.axis("off")
+            plt.title(f"Generation {gen+1}/{n_gens}, Fitness: {best.fitness:.6f}")
+            plt.show()
 
     return best
