@@ -4,10 +4,16 @@ from skimage import color
 from skimage.metrics import structural_similarity
 from scipy import ndimage
 
-def compute_fitness(individual, target_image):
+def compute_fitness(individual, target_image, generation=0, max_generations=100):
     """
     Computes fitness on a patch by dynamically computing the bounding box from the triangles.
     It compares the rendered patch with the corresponding area of the target image.
+    
+    Parameters:
+        individual: The individual to evaluate
+        target_image: The target image to compare against
+        generation: Current generation number (optional)
+        max_generations: Total number of generations (optional)
     
     A coverage factor is computed as the ratio between the area covered by the individual’s triangles 
     (the bounding box area) and the full area of the patch. This penalizes blank space.

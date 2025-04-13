@@ -7,6 +7,8 @@
     "crossover_rate": 0.9,
     "mutation_rate": 0.05,
     "intermediate_images": 5,
+    "use_image_sampling": true,
+    "sampling_rate": 0.8,
     "selection_method": "tournament",
     "crossover_method": "one_point",
     "mutation_method": "basic",

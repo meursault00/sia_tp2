@@ -64,10 +64,15 @@ def run_ga(config, target_image, global_target=None):
                 offspring.append(c2)
             else:
                 offspring.append(parents[i].clone())
+
+        for child in offspring:
+            child.fitness = compute_fitness(child, target_image, gen, n_gens)
+
         for child in offspring:
             mutation_func(child, config["mutation_rate"], w, h)
         for child in offspring:
-            child.fitness = compute_fitness(child, target_image)
+            child.fitness = compute_fitness(child, target_image, gen, n_gens)
+
         if separation == "traditional":
             combined = population.individuals + offspring
             combined.sort(key=lambda ind: ind.fitness, reverse=True)
@@ -83,7 +88,10 @@ def run_ga(config, target_image, global_target=None):
         else:
             raise ValueError(f"Unknown separation method: {separation}")
 
-        population.evaluate(compute_fitness, target_image)
+        population.evaluate(
+            lambda ind, img: compute_fitness(ind, img, gen, n_gens), 
+            target_image
+        )
         current_best = population.get_best()
         if current_best.fitness > best.fitness:
             best = current_best.clone()
