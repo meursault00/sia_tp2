@@ -137,8 +137,13 @@ def main():
     base, ext = os.path.splitext(output_name)
 
     for i in range(num_snapshots):
-        gen_number, best_ind = results[0][2][i]  # [0] = first patch, [2] = snapshots, [i] = ith snapshot
-        fitness = best_ind.fitness
+        # Use generation number from the first patch (they all match across patches)
+        gen_number, _ = results[0][2][i]
+
+        # Aggregate fitness from all patches at this generation
+        fitnesses = [snapshots[i][1].fitness for _, _, snapshots in results]
+        avg_fitness = sum(fitnesses) / len(fitnesses)
+
         weight = snapshot_weights[i]
         weight[weight == 0] = 1.0
         normalized = snapshot_composites[i] / weight[:, :, np.newaxis]
@@ -147,7 +152,9 @@ def main():
 
         output_path = os.path.join(results_folder, f"{base}_gen{gen_number}{ext}")
         img.save(output_path)
-        print(f"[Main] Saved generation {gen_number} to {output_path}, fitness = {fitness:.6f}")
+        print(f"[Main] Saved generation {gen_number} to {output_path}, avg fitness = {avg_fitness:.6f}")
+        fitness_var = np.var(fitnesses)
+        print(f"[Main] Fitness variance across patches for generation {gen_number}: {fitness_var:.6f}")
 
 
 if __name__ == "__main__":
