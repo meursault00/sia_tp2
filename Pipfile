@@ -10,6 +10,8 @@ jupyter = "*"
 matplotlib = "*"
 ipython = "*"
 ipywidgets = "*"
+plotly = "*"
+pandas = "*"
 
 [dev-packages]
 
