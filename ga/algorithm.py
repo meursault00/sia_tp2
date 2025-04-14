@@ -48,6 +48,7 @@ def run_ga(config, target_image, global_target=None):
     crossover_func = crossover_strategies[config["crossover_method"]]
     mutation_func  = mutation_strategies[config["mutation_method"]]
 
+    # Initialize population
     population = Population(config, w, h, global_target)
     population.evaluate(compute_fitness, target_image)
     best = population.get_best()
@@ -56,6 +57,8 @@ def run_ga(config, target_image, global_target=None):
     for gen in range(n_gens):
         parents = selection_func(population.individuals, K)
         offspring = []
+
+        # Crossover
         for i in range(0, len(parents), 2):
             if i+1 < len(parents):
                 p1, p2 = parents[i], parents[i+1]
@@ -68,14 +71,17 @@ def run_ga(config, target_image, global_target=None):
             else:
                 offspring.append(parents[i].clone())
 
+        # Fitness evaluation
         for child in offspring:
             child.fitness = compute_fitness(child, target_image, gen, n_gens)
 
+        # Mutation + Fitness evaluation
         for child in offspring:
             mutation_func(child, config["mutation_rate"], w, h)
         for child in offspring:
             child.fitness = compute_fitness(child, target_image, gen, n_gens)
 
+        # Population separation
         if separation == "traditional":
             combined = population.individuals + offspring
             combined.sort(key=lambda ind: ind.fitness, reverse=True)
@@ -98,8 +104,11 @@ def run_ga(config, target_image, global_target=None):
         current_best = population.get_best()
         if current_best.fitness > best.fitness:
             best = current_best.clone()
+
+        # Save snapshot if needed
         if gen in capture_generations:
             snapshots.append((gen, best.clone()))
+
         if not disable_display and clear_output is not None:
             clear_output(wait=True)
             best_img = render_individual(best, w, h)
@@ -107,6 +116,8 @@ def run_ga(config, target_image, global_target=None):
             plt.axis("off")
             plt.title(f"Generation {gen+1}/{n_gens}, Fitness: {best.fitness:.6f}")
             plt.show()
+    
+    # Ensure final snapshot exists
     if n_gens - 1 not in [gen for gen, _ in snapshots]:
         snapshots.append((n_gens - 1, best.clone()))
     return snapshots

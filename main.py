@@ -137,7 +137,8 @@ def main():
     base, ext = os.path.splitext(output_name)
 
     for i in range(num_snapshots):
-        gen_number, _ = results[0][2][i]  # [0] = first patch, [2] = snapshots, [i] = ith snapshot
+        gen_number, best_ind = results[0][2][i]  # [0] = first patch, [2] = snapshots, [i] = ith snapshot
+        fitness = best_ind.fitness
         weight = snapshot_weights[i]
         weight[weight == 0] = 1.0
         normalized = snapshot_composites[i] / weight[:, :, np.newaxis]
@@ -146,7 +147,7 @@ def main():
 
         output_path = os.path.join(results_folder, f"{base}_gen{gen_number}{ext}")
         img.save(output_path)
-        print(f"[Main] Saved generation {gen_number} to {output_path}")
+        print(f"[Main] Saved generation {gen_number} to {output_path}, fitness = {fitness:.6f}")
 
 
 if __name__ == "__main__":
