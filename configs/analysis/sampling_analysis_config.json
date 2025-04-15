@@ -1,6 +1,6 @@
 {
     "shared": {
-        "n_generations": 10,
+        "n_generations": 100,
         "n_triangles_global": 1000,
         "tri_per_patch_desired": 20,
         "overlap_frac": 0.2,
