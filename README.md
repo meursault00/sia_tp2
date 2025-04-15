@@ -38,13 +38,13 @@ pipenv run python main.py [config_path] [image_path]
 ### Análisis de función de fitness
 
 ```
-pipenv run python fitness_analysis.py fitness_analysis.json
+pipenv run python fitness_analysis.py configs/fitness_analysis.json
 ```
 
 ### Análisis de método de separación de población
 
 ```
-pipenv run python pop_sep_analysis.py pop_sep_analysis.json
+pipenv run python pop_sep_analysis.py configs/pop_sep_analysis.json
 ```
 
 ## Ejecución con Jupyter Notebook
