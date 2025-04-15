@@ -6,6 +6,7 @@ import time
 import numpy as np
 from PIL import Image
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import matplotlib.pyplot as plt
 
 # Add project root to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -35,7 +36,7 @@ def run_patch_ga(patch_box, nominal_rect, local_config, patch, global_target):
 def run_crossover_method(crossover_method, crossover_params, base_config, image_path, output_dir):
     """
     Runs the GA for one crossover method across all patches, saving the composite image.
-    Returns results dictionary.
+    Returns results dictionary with max and min fitness.
     """
     print(f"Starting crossover method: {crossover_method}", flush=True)
     
@@ -145,23 +146,109 @@ def run_crossover_method(crossover_method, crossover_params, base_config, image_
     final_composite.save(output_path)
     runtime = time.time() - start_time
 
-    # Compute average fitness (for JSON, not display)
+    # Compute fitness statistics
     fitnesses = [ind.fitness for _, _, ind in results if hasattr(ind, 'fitness') and ind.fitness is not None]
     avg_fitness = np.mean(fitnesses) if fitnesses else 0.0
+    max_fitness = np.max(fitnesses) if fitnesses else 0.0
+    min_fitness = np.min(fitnesses) if fitnesses else 0.0
 
     print(f"Finished crossover method: {crossover_method}", flush=True)
     return {
         "crossover_method": crossover_method,
         "avg_fitness": float(avg_fitness),  # Ensure JSON serializable
+        "max_fitness": float(max_fitness),
+        "min_fitness": float(min_fitness),
         "runtime": runtime,
         "output_path": output_path,
         "n_patches": len(results)
     }
 
+def plot_crossover_comparisons(results, output_dir):
+    """
+    Generates bar plots comparing average fitness and runtime across crossover methods.
+    Fitness plot includes error bars for max and min fitness.
+    Saves plots to output_dir without printing.
+    """
+    valid_results = [r for r in results if r["avg_fitness"] is not None and not np.isnan(r["avg_fitness"])]
+    if not valid_results:
+        return
+
+    methods = [r["crossover_method"] for r in valid_results]
+    fitnesses = [r["avg_fitness"] for r in valid_results]
+    max_fitnesses = [r["max_fitness"] for r in valid_results]
+    min_fitnesses = [r["min_fitness"] for r in valid_results]
+    runtimes = [r["runtime"] for r in valid_results]
+
+    # Fitness plot with error bars
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(methods, fitnesses, color='skyblue')
+    # Compute error bounds
+    yerr_lower = [f - min_f for f, min_f in zip(fitnesses, min_fitnesses)]
+    yerr_upper = [max_f - f for f, max_f in zip(fitnesses, max_fitnesses)]
+    # Add error bars
+    plt.errorbar(methods, fitnesses, yerr=[yerr_lower, yerr_upper], fmt='none', 
+                 ecolor='black', capsize=3, capthick=1, elinewidth=1)
+    plt.xlabel("Crossover Methods")
+    plt.ylabel("Average Fitness")
+    plt.title("Comparison of Average Fitness for Crossover Methods")
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "fitness_comparison.png"))
+    plt.close()
+
+    # Runtime plot
+    plt.figure(figsize=(8, 5))
+    plt.bar(methods, runtimes, color='lightcoral')
+    plt.xlabel("Crossover Methods")
+    plt.ylabel("Runtime (seconds)")
+    plt.title("Comparison of Runtime for Crossover Methods")
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "runtime_comparison.png"))
+    plt.close()
+
+def plot_image_comparison(results, output_dir):
+    """
+    Generates a landscape grid plot displaying composite images for each crossover method.
+    Single row for all methods.
+    Saves plot to output_dir without printing.
+    """
+    valid_results = [r for r in results if r["avg_fitness"] is not None and not np.isnan(r["avg_fitness"])]
+    if not valid_results:
+        return
+
+    methods = [r["crossover_method"] for r in valid_results]
+    n_methods = len(methods)
+    
+    # Set up figure: 1 row, n_methods columns, landscape
+    fig, axes = plt.subplots(1, n_methods, figsize=(4 * n_methods, 4))
+    
+    # Handle single method case
+    if n_methods == 1:
+        axes = [axes]
+    
+    # Plot images
+    for i, (method, result) in enumerate(zip(methods, valid_results)):
+        ax = axes[i]
+        if os.path.exists(result["output_path"]):
+            img = Image.open(result["output_path"]).convert("RGBA")
+            # Resize to fit (maintain aspect ratio)
+            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+            ax.imshow(img)
+        else:
+            # Blank placeholder for missing image
+            ax.imshow(np.ones((100, 100, 4)))
+        ax.set_title(method, fontsize=8)
+        ax.axis("off")
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "image_comparison.png"))
+    plt.close()
+
 def main_analysis(config_path, image_path):
     """
     Analyzes all crossover methods using a config with shared and crossover-specific settings.
-    Saves results in analysis_results/crossover_methods/.
+    Saves results and comparison plots in analysis_results/crossover_methods/.
     """
     # Load config
     with open(config_path, "r") as f:
@@ -199,6 +286,8 @@ def main_analysis(config_path, image_path):
             results.append({
                 "crossover_method": method,
                 "avg_fitness": None,
+                "max_fitness": None,
+                "min_fitness": None,
                 "runtime": None,
                 "output_path": None,
                 "n_patches": 0,
@@ -213,6 +302,10 @@ def main_analysis(config_path, image_path):
     # Print minimal summary
     completed_methods = [r["crossover_method"] for r in results if r["avg_fitness"] is not None]
     print(f"Analysis complete: {completed_methods}", flush=True)
+
+    # Generate comparison plots silently
+    plot_crossover_comparisons(results, output_dir)
+    plot_image_comparison(results, output_dir)
 
 if __name__ == "__main__":
     # Handle command-line arguments

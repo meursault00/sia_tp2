@@ -67,6 +67,20 @@ Luego de volcar los datos en el archivo selective_pressure_analysis, ejecutarlo 
 pipenv run python selective_pressure_analysis.py
 ```
 
+### Análisis de diferente sampleo con permutación de métodos de mutación
+
+```
+pipenv run python analysis/sampling_analysis.py configs/analysis/sampling_analysis_config.json [image_path]
+```
+
+### Análisis de métodos de cada parámetro
+
+```
+pipenv run python analysis/selection_analysis.py configs/analysis/selection_analysis_config.json [image_path]
+pipenv run python analysis/crossover_analysis.py configs/analysis/crossover_analysis_config.json [image_path]
+pipenv run python analysis/mutation_analysis.py configs/analysis/mutation_analysis_config.json [image_path]
+```
+
 ## Ejecución con Jupyter Notebook
 
 Para ver los generaciones intermedias se puede usar Jupyter Notebook.

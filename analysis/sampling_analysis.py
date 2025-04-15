@@ -36,7 +36,7 @@ def run_patch_ga(patch_box, nominal_rect, local_config, patch, global_target):
 def run_sampling_condition(sampling_rate, mutation_method, base_config, image_path, output_dir):
     """
     Runs the GA for one sampling rate and mutation method across all patches, saving the composite image.
-    Returns results dictionary.
+    Returns results dictionary with max and min fitness.
     """
     condition_name = f"sampling_{sampling_rate}_mutation_{mutation_method}"
     print(f"Starting condition: {condition_name}", flush=True)
@@ -147,15 +147,19 @@ def run_sampling_condition(sampling_rate, mutation_method, base_config, image_pa
     final_composite.save(output_path)
     runtime = time.time() - start_time
 
-    # Compute average fitness (for JSON, not display)
+    # Compute fitness statistics
     fitnesses = [ind.fitness for _, _, ind in results if hasattr(ind, 'fitness') and ind.fitness is not None]
     avg_fitness = np.mean(fitnesses) if fitnesses else 0.0
+    max_fitness = np.max(fitnesses) if fitnesses else 0.0
+    min_fitness = np.min(fitnesses) if fitnesses else 0.0
 
     print(f"Finished condition: {condition_name}", flush=True)
     return {
         "sampling_rate": sampling_rate,
         "mutation_method": mutation_method,
         "avg_fitness": float(avg_fitness),  # Ensure JSON serializable
+        "max_fitness": float(max_fitness),
+        "min_fitness": float(min_fitness),
         "runtime": runtime,
         "output_path": output_path,
         "n_patches": len(results)
@@ -164,7 +168,7 @@ def run_sampling_condition(sampling_rate, mutation_method, base_config, image_pa
 def plot_sampling_comparisons(results, output_dir):
     """
     Generates bar plots comparing average fitness and runtime for exactly three sampling rates.
-    Each sampling rate has a pair of bars for mutation methods.
+    Fitness plot includes error lines for max and min fitness.
     Saves plots to output_dir without printing.
     """
     valid_results = [r for r in results if r["avg_fitness"] is not None and not np.isnan(r["avg_fitness"])]
@@ -177,7 +181,9 @@ def plot_sampling_comparisons(results, output_dir):
     mutation_methods = sorted(set(r["mutation_method"] for r in valid_results))
     
     # Prepare data for three pairs of bars
-    fitness_data = {m: [0.0] * 3 for m in mutation_methods}  # Initialize with zeros
+    fitness_data = {m: [0.0] * 3 for m in mutation_methods}
+    max_fitness_data = {m: [0.0] * 3 for m in mutation_methods}
+    min_fitness_data = {m: [0.0] * 3 for m in mutation_methods}
     runtime_data = {m: [0.0] * 3 for m in mutation_methods}
     for i, rate in enumerate(sampling_rates):
         for method in mutation_methods:
@@ -186,6 +192,8 @@ def plot_sampling_comparisons(results, output_dir):
                           if r["sampling_rate"] == rate and r["mutation_method"] == method), None)
             if result:
                 fitness_data[method][i] = result["avg_fitness"]
+                max_fitness_data[method][i] = result["max_fitness"]
+                min_fitness_data[method][i] = result["min_fitness"]
                 runtime_data[method][i] = result["runtime"]
 
     # Plot settings
@@ -193,11 +201,18 @@ def plot_sampling_comparisons(results, output_dir):
     x = np.arange(len(sampling_rates))  # Positions for three groups
     colors = plt.cm.tab10(np.linspace(0, 1, max(len(mutation_methods), 2)))  # At least two colors
 
-    # Fitness plot
+    # Fitness plot with error lines
     plt.figure(figsize=(8, 6))
     for i, method in enumerate(mutation_methods):
         offset = i * bar_width - bar_width / 2 * (len(mutation_methods) - 1)
-        plt.bar(x + offset, fitness_data[method], bar_width, label=method, color=colors[i])
+        # Plot bars
+        bars = plt.bar(x + offset, fitness_data[method], bar_width, label=method, color=colors[i])
+        # Compute error bounds
+        yerr_lower = [fitness_data[method][j] - min_fitness_data[method][j] for j in range(len(sampling_rates))]
+        yerr_upper = [max_fitness_data[method][j] - fitness_data[method][j] for j in range(len(sampling_rates))]
+        # Add error bars
+        plt.errorbar(x + offset, fitness_data[method], yerr=[yerr_lower, yerr_upper], fmt='none', 
+                     ecolor='black', capsize=3, capthick=1, elinewidth=1)
     plt.xlabel("Sampling Rate")
     plt.ylabel("Average Fitness")
     plt.title("Average Fitness by Sampling Rate and Mutation Method")
@@ -207,7 +222,7 @@ def plot_sampling_comparisons(results, output_dir):
     plt.savefig(os.path.join(output_dir, "fitness_comparison.png"))
     plt.close()
 
-    # Runtime plot
+    # Runtime plot (unchanged)
     plt.figure(figsize=(8, 6))
     for i, method in enumerate(mutation_methods):
         offset = i * bar_width - bar_width / 2 * (len(mutation_methods) - 1)
@@ -219,6 +234,50 @@ def plot_sampling_comparisons(results, output_dir):
     plt.legend(title="Mutation Method")
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "runtime_comparison.png"))
+    plt.close()
+
+def plot_image_comparison(results, output_dir):
+    """
+    Generates a grid plot displaying composite images for each condition in landscape mode.
+    Rows are mutation methods, columns are sampling rates.
+    Saves plot to output_dir without printing.
+    """
+    valid_results = [r for r in results if r["avg_fitness"] is not None and not np.isnan(r["avg_fitness"])]
+    if not valid_results:
+        return
+
+    # Fixed sampling rates and expected mutation methods
+    sampling_rates = [0.0, 0.5, 1.0]
+    mutation_methods = sorted(set(r["mutation_method"] for r in valid_results))
+    
+    # Set up figure: len(mutation_methods) rows, 3 columns (rates), landscape
+    fig, axes = plt.subplots(len(mutation_methods), len(sampling_rates), 
+                            figsize=(4 * len(sampling_rates), 4 * len(mutation_methods)))
+    
+    # Handle single method case
+    if len(mutation_methods) == 1:
+        axes = np.array([axes])  # Ensure 2D array for iteration
+    
+    # Plot images
+    for i, method in enumerate(mutation_methods):
+        for j, rate in enumerate(sampling_rates):
+            # Find matching result
+            result = next((r for r in valid_results 
+                          if r["sampling_rate"] == rate and r["mutation_method"] == method), None)
+            ax = axes[i, j] if len(mutation_methods) > 1 else axes[0, j]
+            if result and os.path.exists(result["output_path"]):
+                img = Image.open(result["output_path"]).convert("RGBA")
+                # Resize to fit (maintain aspect ratio)
+                img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                ax.imshow(img)
+            else:
+                # Blank placeholder for missing image
+                ax.imshow(np.ones((100, 100, 4)))
+            ax.set_title(f"sampling_{rate}_{method}", fontsize=8)
+            ax.axis("off")
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "image_comparison.png"))
     plt.close()
 
 def main_analysis(config_path, image_path):
@@ -260,6 +319,8 @@ def main_analysis(config_path, image_path):
                 "sampling_rate": sampling_rate,
                 "mutation_method": mutation_method,
                 "avg_fitness": None,
+                "max_fitness": None,
+                "min_fitness": None,
                 "runtime": None,
                 "output_path": None,
                 "n_patches": 0,
@@ -278,6 +339,7 @@ def main_analysis(config_path, image_path):
 
     # Generate comparison plots silently
     plot_sampling_comparisons(results, output_dir)
+    plot_image_comparison(results, output_dir)
 
 if __name__ == "__main__":
     # Handle command-line arguments
