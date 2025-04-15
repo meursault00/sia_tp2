@@ -88,7 +88,7 @@ def main():
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = [executor.submit(run_patch_ga, tb, nr, conf, p, full_target)
                    for tb, nr, conf, p, _ in tasks]
-        future_counter = 0
+        future_counter = 1
         for future in as_completed(futures):
             try:
                 result = future.result()  # result = (patch_box, nominal_rect, snapshots)

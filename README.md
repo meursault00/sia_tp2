@@ -47,6 +47,26 @@ pipenv run python fitness_analysis.py configs/fitness_analysis.json
 pipenv run python pop_sep_analysis.py configs/pop_sep_analysis.json
 ```
 
+### Análisis de estabilidad de método de selección
+Correr con todas las configuraciones de la carpeta configs/selection_sability de la siguiente manera:
+```
+pipenv run python main.py configs/selection_sability/boltzmann.json images/bosch.jpg
+```
+Luego de volcar los datos en el archivo stability_analysis, ejecutarlo para ver gráficos:
+```
+pipenv run python stability_analysis.py
+```
+
+### Análisis de presión selectiva
+Correr con todas las configuraciones de la carpeta configs/selection_pressure de la siguiente manera:
+```
+pipenv run python main.py configs/selection_pressure/ranking.json images/bosch.jpg
+```
+Luego de volcar los datos en el archivo selective_pressure_analysis, ejecutarlo para ver gráficos:
+```
+pipenv run python selective_pressure_analysis.py
+```
+
 ## Ejecución con Jupyter Notebook
 
 Para ver los generaciones intermedias se puede usar Jupyter Notebook.

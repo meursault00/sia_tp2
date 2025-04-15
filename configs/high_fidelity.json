@@ -15,5 +15,5 @@
     "separation_method": "traditional",
     "overlap_frac": 0.2,
     "max_dim": 512,
-    "output_image_name": "tussi.png"
+    "output_image_name": "campus_triangulado.png"
   }
