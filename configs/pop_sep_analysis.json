@@ -1,0 +1,28 @@
+{
+    "images": [
+      "images/banderas/cuba.jpg",
+      "images/calamaro.jpg",
+      "images/monet.jpg"
+    ],
+  
+    "n_triangles_global": 100,
+    "tri_per_patch_desired": 25,
+    "population_size": 50,
+    "n_generations": 100,
+    "parents_size": 30,
+    "crossover_rate": 0.9,
+    "mutation_rate": 0.05,
+    "intermediate_images": 5,
+    "use_image_sampling": true,
+    "sampling_rate": 0.8,
+  
+    "selection_method": "tournament",     
+    "crossover_method": "one_point",
+    "mutation_method": "basic",
+    "separation_method": "traditional",   
+    "overlap_frac": 0.2,
+    "max_dim": 256,
+  
+    "output_image_name": "analysis_result.png",
+    "fitness_mode": "default"
+  }

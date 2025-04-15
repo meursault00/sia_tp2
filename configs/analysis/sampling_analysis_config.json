@@ -1,0 +1,21 @@
+{
+    "shared": {
+        "n_generations": 100,
+        "n_triangles_global": 1000,
+        "tri_per_patch_desired": 20,
+        "overlap_frac": 0.2,
+        "population_size": 50,
+        "selection_method": "tournament",
+        "crossover_method": "uniform",
+        "mutation_rate": 0.1,
+        "crossover_rate": 0.8
+    },
+    "sampling_configs": [
+        {"rate": 0.0, "mutation": "basic"},
+        {"rate": 0.0, "mutation": "multi_gen"},
+        {"rate": 0.5, "mutation": "basic"},
+        {"rate": 0.5, "mutation": "multi_gen"},
+        {"rate": 1.0, "mutation": "basic"},
+        {"rate": 1.0, "mutation": "multi_gen"}
+    ]
+}

@@ -5,7 +5,7 @@ from skimage.metrics import structural_similarity
 from scipy import ndimage
 from PIL import Image
 
-def compute_fitness(individual, target_image):
+def compute_fitness(individual, target_image, generation=None, max_generations=None):
     """
     Computes fitness on a patch using pixel interpolation.
     First, the dynamic bounding box is computed from the triangles.

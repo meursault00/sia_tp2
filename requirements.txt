@@ -5,3 +5,4 @@ ipython
 ipywidgets
 scikit-image
 scipy
+plotly

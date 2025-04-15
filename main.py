@@ -88,7 +88,7 @@ def main():
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = [executor.submit(run_patch_ga, tb, nr, conf, p, full_target)
                    for tb, nr, conf, p, _ in tasks]
-        future_counter = 0
+        future_counter = 1
         for future in as_completed(futures):
             try:
                 result = future.result()  # result = (patch_box, nominal_rect, snapshots)
@@ -130,7 +130,9 @@ def main():
             snapshot_weights[i][upper:lower, left:right] += mask[:, :, 0]
 
     # Normalize and save each snapshot
-    results_folder = "results"
+
+    # With:
+    results_folder = global_config.get("results_folder", "results")
     os.makedirs(results_folder, exist_ok=True)
 
     output_name = global_config.get("output_image_name", "composite_result.png")
