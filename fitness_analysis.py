@@ -61,7 +61,7 @@ def main():
     fitness_modes = [("default", "default"), ("interpolated", "interp")]
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    top_results_folder = os.path.join("results", f"analysis_results_{timestamp}")
+    top_results_folder = os.path.join("results", f"fitness_analysis_results_{timestamp}")
     os.makedirs(top_results_folder, exist_ok=True)
 
     for img_path in image_paths:
