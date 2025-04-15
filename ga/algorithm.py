@@ -1,4 +1,6 @@
 import random
+import os
+import numpy as np
 try:
     from IPython.display import clear_output
 except ImportError:
@@ -30,6 +32,12 @@ def run_ga(config, target_image, global_target=None):
     separation = config.get("separation_method", "traditional")
     disable_display = config.get("disable_display", False)
 
+    # Add fitness recording variables
+    record_fitness = os.environ.get("RECORD_FITNESS", "0") == "1"
+    fitness_output = os.environ.get("FITNESS_OUTPUT", None)
+    fitness_history = []
+    avg_fitness_history = []
+
     # Generation snapshot frequency (if desired).
     intermediate_freq = config.get("intermediate_images", 0)
     capture_generations = []
@@ -52,6 +60,12 @@ def run_ga(config, target_image, global_target=None):
     population = Population(config, w, h, global_target)
     population.evaluate(compute_fitness, target_image)
     best = population.get_best()
+    
+    # Record initial fitness
+    if record_fitness:
+        fitness_history.append(best.fitness)
+        avg_fitness = sum(ind.fitness for ind in population.individuals) / len(population.individuals)
+        avg_fitness_history.append(avg_fitness)
 
     n_gens = config["n_generations"]
     for gen in range(n_gens):
@@ -105,6 +119,12 @@ def run_ga(config, target_image, global_target=None):
         if current_best.fitness > best.fitness:
             best = current_best.clone()
 
+        # Record fitness for this generation
+        if record_fitness:
+            fitness_history.append(best.fitness)
+            avg_fitness = sum(ind.fitness for ind in population.individuals) / len(population.individuals)
+            avg_fitness_history.append(avg_fitness)
+
         # Save snapshot if needed
         if gen in capture_generations:
             snapshots.append((gen, best.clone()))
@@ -116,6 +136,23 @@ def run_ga(config, target_image, global_target=None):
             plt.axis("off")
             plt.title(f"Generation {gen+1}/{n_gens}, Fitness: {best.fitness:.6f}")
             plt.show()
+    
+    # Save fitness history if recording is enabled
+    if record_fitness and fitness_output:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(fitness_output), exist_ok=True)
+        
+        # Save both best and average fitness
+        data_to_save = np.column_stack((
+            np.arange(len(fitness_history)),  # Generation number
+            fitness_history,                  # Best fitness
+            avg_fitness_history               # Average fitness
+        ))
+        
+        # Save with header
+        header = "generation,best_fitness,avg_fitness"
+        np.savetxt(fitness_output, data_to_save, delimiter=',', header=header, comments='')
+        print(f"[Worker] Saved fitness data to {fitness_output}")
     
     # Ensure final snapshot exists
     if n_gens - 1 not in [gen for gen, _ in snapshots]:
