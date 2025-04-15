@@ -4,6 +4,7 @@ from .ranking import ranking_selection
 from .boltzmann import boltzmann_selection
 from .elite import elite_selection
 from .universal import universal_selection
+from .tournament import probabilistic_tournament_selection
 
 # Mapeo por string => función
 selection_strategies = {
@@ -12,5 +13,6 @@ selection_strategies = {
     "ranking": ranking_selection,
     "boltzmann": boltzmann_selection,
     "elite": elite_selection,
-    "universal": universal_selection
+    "universal": universal_selection,
+    "probabilistic_tournament": probabilistic_tournament_selection
 }
