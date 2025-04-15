@@ -27,7 +27,7 @@ def run_experiment(base_config, image_path, fitness_mode, run_label, timestamp, 
     config["results_folder"] = results_subfolder
 
     # Also adjust the output image name to avoid collisions
-    # Example: composite_guyana_default_20250414_190210.png
+    # Example: composite_guyana_default_20250415_101112.png
     config["output_image_name"] = f"composite_{run_label}_{timestamp}.png"
 
     # Create a temp config file inside the subfolder
@@ -78,9 +78,10 @@ def main():
         ("interpolated", "interp")
     ]
 
-    # 3) Create a single top-level timestamped folder for everything
+    # 3) We want everything inside the 'results' folder.
+    #    Then we create a single top-level subfolder for this analysis run.
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    top_results_folder = f"analysis_results_{timestamp}"
+    top_results_folder = os.path.join("results", f"analysis_results_{timestamp}")
     os.makedirs(top_results_folder, exist_ok=True)
 
     # 4) For each image, create a subfolder, run each mode, and gather data
@@ -90,7 +91,7 @@ def main():
         image_label = os.path.splitext(img_basename)[0]
 
         # Create a subfolder for this image
-        # e.g.: analysis_results_20250414_190210/guyana/
+        # e.g.: results/analysis_results_20250415_101112/guyana/
         results_subfolder = os.path.join(top_results_folder, image_label)
         os.makedirs(results_subfolder, exist_ok=True)
 
